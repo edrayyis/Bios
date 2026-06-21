@@ -1,0 +1,51 @@
+name: Build System Optimizer
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - "SystemOptimizer/**"
+      - ".github/workflows/build.yml"
+  pull_request:
+    paths:
+      - "SystemOptimizer/**"
+      - ".github/workflows/build.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    defaults:
+      run:
+        working-directory: SystemOptimizer
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Restore
+        run: dotnet restore
+
+      - name: Build (Release)
+        run: dotnet build -c Release --no-restore
+
+      - name: Publish single-file exe
+        run: >
+          dotnet publish src/SystemOptimizer/SystemOptimizer.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -o publish
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: SystemOptimizer-win-x64
+          path: SystemOptimizer/publish/SystemOptimizer.exe
+          if-no-files-found: error

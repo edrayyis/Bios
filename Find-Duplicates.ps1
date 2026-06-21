@@ -44,6 +44,15 @@
     Optional filter, e.g. -IncludeExtensions '.jpg','.png','.heic' to target
     photos only.
 
+.PARAMETER ExcludePaths
+    Extra folder names/paths to skip, on top of the built-in system list.
+    Matched as a path substring, e.g. -ExcludePaths 'Dropbox','OneDrive'.
+
+.PARAMETER IncludeSystemFolders
+    Override the safety exclusions and scan protected system folders
+    (Windows, WindowsApps, Program Files, etc.). NOT recommended - these
+    contain OS/app files, not your personal duplicates.
+
 .EXAMPLE
     # Stage 1 - just see what's duplicated (no changes)
     .\Find-Duplicates.ps1 -Paths 'D:\','G:\'
@@ -80,8 +89,47 @@ param(
 
     [int]      $MinSizeKB = 1,
 
-    [string[]] $IncludeExtensions
+    [string[]] $IncludeExtensions,
+
+    # Extra paths to skip, on top of the built-in system/protected list below.
+    [string[]] $ExcludePaths,
+
+    # Set this to deliberately scan protected system folders (NOT recommended).
+    [switch]   $IncludeSystemFolders
 )
+
+# Folders that must never be treated as "junk duplicates": OS, installed apps,
+# and program files. Identical files here belong to Windows or your apps and
+# moving them can break software. WindowsApps in particular is access-denied.
+$script:DefaultExcludes = @(
+    'WindowsApps'
+    'Windows'
+    'Program Files'
+    'Program Files (x86)'
+    'ProgramData'
+    '$Recycle.Bin'
+    'System Volume Information'
+    'AppData\Local\Packages'
+    'AppData\Local\Microsoft\WindowsApps'
+) | ForEach-Object { '\' + $_.Trim('\') + '\' }
+
+# Combine built-ins with any user-supplied exclusions (skipped if overridden).
+$script:AllExcludes = @()
+if (-not $IncludeSystemFolders) { $script:AllExcludes += $script:DefaultExcludes }
+if ($ExcludePaths) {
+    $script:AllExcludes += ($ExcludePaths | ForEach-Object { '\' + $_.Trim('\') + '\' })
+}
+
+function Test-Excluded {
+    param([string] $FullPath)
+    if (-not $script:AllExcludes) { return $false }
+    # Normalize so a substring match like "\Windows\" is reliable.
+    $p = '\' + $FullPath.TrimStart('\')
+    foreach ($ex in $script:AllExcludes) {
+        if ($p -like "*$ex*") { return $true }
+    }
+    return $false
+}
 
 # ---------------------------------------------------------------------------
 # Stage 3: Delete quarantined files
@@ -148,8 +196,12 @@ $allFiles = foreach ($p in $validPaths) {
     Get-ChildItem -LiteralPath $p -Recurse -File -Force -ErrorAction SilentlyContinue |
         Where-Object {
             $_.Length -ge $minBytes -and
-            (-not $IncludeExtensions -or $IncludeExtensions -contains $_.Extension.ToLower())
+            (-not $IncludeExtensions -or $IncludeExtensions -contains $_.Extension.ToLower()) -and
+            (-not (Test-Excluded $_.FullName))
         }
+}
+if (-not $IncludeSystemFolders) {
+    Write-Host "Skipping protected system folders (Windows, WindowsApps, Program Files, etc.)" -ForegroundColor DarkGray
 }
 
 if (-not $allFiles) { Write-Host "No matching files found." -ForegroundColor Yellow; return }

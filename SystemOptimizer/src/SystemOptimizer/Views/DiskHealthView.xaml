@@ -1,0 +1,100 @@
+<UserControl x:Class="SystemOptimizer.Views.DiskHealthView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}"
+                   Text="Disk health, space, and optimization" />
+
+        <!-- Physical disks -->
+        <DataGrid Grid.Row="1" ItemsSource="{Binding Disks}" AutoGenerateColumns="False"
+                  CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
+                  MaxHeight="130" GridLinesVisibility="Horizontal"
+                  BorderBrush="{StaticResource BorderBrushSoft}" Margin="0,0,0,10">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Drive" Binding="{Binding Model}" Width="*" />
+                <DataGridTextColumn Header="Type" Binding="{Binding MediaType}" Width="80" />
+                <DataGridTextColumn Header="Size" Binding="{Binding SizeDisplay}" Width="100" />
+                <DataGridTextColumn Header="Health" Binding="{Binding HealthStatus}" Width="100" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <!-- Volumes -->
+        <DataGrid Grid.Row="2" ItemsSource="{Binding Volumes}" AutoGenerateColumns="False"
+                  CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
+                  SelectedItem="{Binding SelectedVolume}" MaxHeight="150"
+                  GridLinesVisibility="Horizontal" BorderBrush="{StaticResource BorderBrushSoft}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Volume" Binding="{Binding Drive}" Width="70" />
+                <DataGridTextColumn Header="Label" Binding="{Binding Label}" Width="140" />
+                <DataGridTextColumn Header="FS" Binding="{Binding FileSystem}" Width="70" />
+                <DataGridTextColumn Header="Total" Binding="{Binding TotalDisplay}" Width="90" />
+                <DataGridTextColumn Header="Free" Binding="{Binding FreeDisplay}" Width="90" />
+                <DataGridTemplateColumn Header="Used" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <Grid VerticalAlignment="Center" Margin="2">
+                                <ProgressBar Height="14" Maximum="100" Value="{Binding UsedPercent}"
+                                             Foreground="{Binding UsedPercent, Converter={StaticResource UsedPercentToBrush}}" />
+                                <TextBlock Text="{Binding UsedDisplay}" FontSize="11"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Margin="0,10,0,10">
+            <Button Content="Refresh health" Command="{Binding RefreshHealthCommand}" />
+            <Button Content="Optimize selected volume" Command="{Binding OptimizeCommand}"
+                    Style="{StaticResource SecondaryButton}" />
+            <TextBlock Text="(TRIM for SSD, defrag for HDD — chosen automatically)"
+                       Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="4,0,0,0" />
+        </StackPanel>
+
+        <!-- Large file finder -->
+        <Grid Grid.Row="4" Margin="0,4,0,8">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Grid.Column="0" Text="Find files in:" VerticalAlignment="Center" Margin="0,0,8,0" />
+            <TextBox Grid.Column="1" Text="{Binding LargeFileRoots}" />
+            <TextBlock Grid.Column="2" Text="≥ (MB):" VerticalAlignment="Center" Margin="8,0,4,0" />
+            <TextBox Grid.Column="3" Text="{Binding MinSizeMB}" Width="60" />
+            <Button Grid.Column="4" Content="Find large files" Command="{Binding FindLargeFilesCommand}"
+                    Margin="8,0,0,0" />
+        </Grid>
+
+        <DataGrid Grid.Row="5" ItemsSource="{Binding LargeFiles}" AutoGenerateColumns="False"
+                  CanUserAddRows="False" IsReadOnly="True" HeadersVisibility="Column"
+                  GridLinesVisibility="Horizontal" RowHeight="24"
+                  BorderBrush="{StaticResource BorderBrushSoft}">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="File" Binding="{Binding FullName}" Width="*" />
+                <DataGridTextColumn Header="Size" Binding="{Binding SizeDisplay}" Width="100" />
+                <DataGridTextColumn Header="Modified" Binding="{Binding LastModifiedDisplay}" Width="100" />
+            </DataGrid.Columns>
+        </DataGrid>
+
+        <Grid Grid.Row="6" Margin="0,8,0,0">
+            <ProgressBar Height="6" Width="240" Value="{Binding Progress}" Maximum="100"
+                         HorizontalAlignment="Left"
+                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+            <TextBlock Text="{Binding Status}" Foreground="#6B7280" HorizontalAlignment="Right" />
+        </Grid>
+    </Grid>
+</UserControl>

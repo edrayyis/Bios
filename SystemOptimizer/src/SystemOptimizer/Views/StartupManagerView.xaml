@@ -1,0 +1,112 @@
+<UserControl x:Class="SystemOptimizer.Views.StartupManagerView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Grid Margin="14">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Startup entries -->
+        <Grid Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}"
+                       Text="Startup items (run at logon)" />
+            <TextBlock Grid.Row="1" Style="{StaticResource Hint}"
+                       Text="Recommendations: green = keep, amber = delay after boot, red = safe to disable. Disabling is reversible (entries are backed up)." />
+
+            <DataGrid Grid.Row="2" ItemsSource="{Binding StartupEntries}" AutoGenerateColumns="False"
+                      CanUserAddRows="False" HeadersVisibility="Column" RowHeight="26"
+                      GridLinesVisibility="Horizontal" BorderBrush="{StaticResource BorderBrushSoft}">
+                <DataGrid.Columns>
+                    <DataGridCheckBoxColumn Header="Select" Binding="{Binding IsSelected, UpdateSourceTrigger=PropertyChanged}" Width="55" />
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="180" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Recommendation" Binding="{Binding RecommendationDisplay}" Width="130" IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                                <Setter Property="Foreground"
+                                        Value="{Binding Recommendation, Converter={StaticResource RecommendationToBrush}}" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Why" Binding="{Binding Reason}" Width="*" IsReadOnly="True">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                    <DataGridTextColumn Header="Source" Binding="{Binding SourceDisplay}" Width="150" IsReadOnly="True" />
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <Grid Grid.Row="3" Margin="0,8,0,0">
+                <StackPanel Orientation="Horizontal">
+                    <Button Content="Scan startup" Command="{Binding ScanStartupCommand}" />
+                    <Button Content="Disable selected" Command="{Binding DisableSelectedCommand}" />
+                    <Button Content="Delay selected" Command="{Binding DelaySelectedCommand}"
+                            Style="{StaticResource SecondaryButton}" />
+                    <TextBlock Text="Delay (sec):" VerticalAlignment="Center" Margin="6,0,4,0" />
+                    <TextBox Text="{Binding DelaySeconds}" Width="50" />
+                </StackPanel>
+                <TextBlock Text="{Binding StartupSummary}" FontWeight="SemiBold"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+        </Grid>
+
+        <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch"
+                      Background="Transparent" />
+
+        <!-- Installed programs -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Style="{StaticResource SectionHeader}"
+                       Text="Installed programs (uninstall bloatware)" />
+
+            <DataGrid Grid.Row="1" ItemsSource="{Binding Programs}" AutoGenerateColumns="False"
+                      CanUserAddRows="False" HeadersVisibility="Column" RowHeight="26"
+                      GridLinesVisibility="Horizontal" BorderBrush="{StaticResource BorderBrushSoft}">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="*" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Publisher" Binding="{Binding Publisher}" Width="180" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Version" Binding="{Binding Version}" Width="100" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Size" Binding="{Binding SizeDisplay}" Width="90" IsReadOnly="True" />
+                    <DataGridTextColumn Header="Installed" Binding="{Binding InstallDateDisplay}" Width="90" IsReadOnly="True" />
+                    <DataGridTemplateColumn Header="Action" Width="100">
+                        <DataGridTemplateColumn.CellTemplate>
+                            <DataTemplate>
+                                <Button Content="Uninstall" Margin="2" Padding="8,3"
+                                        Command="{Binding DataContext.UninstallCommand,
+                                                  RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                        CommandParameter="{Binding}" />
+                            </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                    </DataGridTemplateColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+
+            <Grid Grid.Row="2" Margin="0,8,0,0">
+                <Button Content="Scan programs" Command="{Binding ScanProgramsCommand}"
+                        HorizontalAlignment="Left" />
+                <TextBlock Text="{Binding ProgramsSummary}" FontWeight="SemiBold"
+                           HorizontalAlignment="Right" VerticalAlignment="Center" />
+            </Grid>
+        </Grid>
+
+        <TextBlock Grid.Row="3" Text="{Binding Status}" Foreground="#6B7280" Margin="0,8,0,0" />
+    </Grid>
+</UserControl>

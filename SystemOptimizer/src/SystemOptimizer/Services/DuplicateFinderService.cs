@@ -1,3 +1,4 @@
+using System.IO;
 using SystemOptimizer.Models;
 using static SystemOptimizer.Services.FileSystemHelpers;
 

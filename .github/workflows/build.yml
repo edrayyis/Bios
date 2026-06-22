@@ -3,7 +3,6 @@ name: Build System Optimizer
 on:
   push:
     branches: ["**"]
-    tags: ["so-v*"]
   workflow_dispatch:
 
 permissions:
@@ -47,12 +46,19 @@ jobs:
           path: SystemOptimizer/publish/SystemOptimizer.exe
           if-no-files-found: error
 
-      # On a version tag (so-v*), publish a real Release with the exe attached
-      # so it has a permanent, mobile-friendly download link.
+      # Publish a real Release with the exe attached so it has a permanent,
+      # mobile-friendly download link (no login / unzip needed, unlike
+      # artifacts). The runner's token creates the tag + release directly.
       - name: Publish GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: System Optimizer ${{ github.ref_name }}
+          tag_name: so-latest
+          name: System Optimizer (latest)
           files: SystemOptimizer/publish/SystemOptimizer.exe
-          generate_release_notes: true
+          prerelease: true
+          body: |
+            Latest automated build of System Optimizer (Windows, self-contained).
+
+            **Download `SystemOptimizer.exe` below.** No install needed.
+            On first launch, approve the UAC prompt and, if SmartScreen warns,
+            choose "More info → Run anyway" (the build is unsigned).

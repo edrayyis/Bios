@@ -3,10 +3,11 @@ name: Build System Optimizer
 on:
   push:
     branches: ["**"]
-    paths:
-      - "SystemOptimizer/**"
-      - ".github/workflows/build.yml"
+    tags: ["so-v*"]
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -39,9 +40,19 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -o publish
 
-      - name: Upload executable
+      - name: Upload executable (artifact)
         uses: actions/upload-artifact@v4
         with:
           name: SystemOptimizer-win-x64
           path: SystemOptimizer/publish/SystemOptimizer.exe
           if-no-files-found: error
+
+      # On a version tag (so-v*), publish a real Release with the exe attached
+      # so it has a permanent, mobile-friendly download link.
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: System Optimizer ${{ github.ref_name }}
+          files: SystemOptimizer/publish/SystemOptimizer.exe
+          generate_release_notes: true

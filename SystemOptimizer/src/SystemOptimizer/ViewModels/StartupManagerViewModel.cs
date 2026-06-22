@@ -43,6 +43,7 @@ public sealed class StartupManagerViewModel : ViewModelBase
     public AsyncRelayCommand ScanStartupCommand { get; }
     public AsyncRelayCommand DisableSelectedCommand { get; }
     public AsyncRelayCommand DelaySelectedCommand { get; }
+    public AsyncRelayCommand BoostStartupCommand { get; }
     public AsyncRelayCommand ScanProgramsCommand { get; }
     public RelayCommand<InstalledProgram> UninstallCommand { get; }
 
@@ -53,6 +54,9 @@ public sealed class StartupManagerViewModel : ViewModelBase
             () => !IsBusy && StartupEntries.Any(e => e.IsSelected));
         DelaySelectedCommand = new AsyncRelayCommand(DelaySelectedAsync,
             () => !IsBusy && StartupEntries.Any(e => e.IsSelected));
+        BoostStartupCommand = new AsyncRelayCommand(BoostStartupAsync,
+            () => !IsBusy && StartupEntries.Any(e =>
+                e.Recommendation is StartupRecommendation.Disable or StartupRecommendation.Delay));
         ScanProgramsCommand = new AsyncRelayCommand(ScanProgramsAsync, () => !IsBusy);
         UninstallCommand = new RelayCommand<InstalledProgram>(Uninstall, p => p?.CanUninstall == true);
     }
@@ -131,6 +135,62 @@ public sealed class StartupManagerViewModel : ViewModelBase
             Status = failures.Count == 0
                 ? $"Delayed {done} startup item(s) to {DelaySeconds}s after logon."
                 : $"Delayed {done}; {failures.Count} failed (see log). First: {failures[0]}";
+        }
+        catch (Exception ex) { Status = $"Error: {ex.Message}"; }
+        finally { IsBusy = false; }
+    }
+
+    /// <summary>
+    /// One-click boost: disables everything recommended to disable and delays
+    /// everything recommended to delay, leaving Keep/Unknown items alone.
+    /// </summary>
+    private async Task BoostStartupAsync()
+    {
+        var toDisable = StartupEntries
+            .Where(e => e.Recommendation == StartupRecommendation.Disable).ToList();
+        var toDelay = StartupEntries
+            .Where(e => e.Recommendation == StartupRecommendation.Delay).ToList();
+
+        if (toDisable.Count == 0 && toDelay.Count == 0)
+        {
+            Status = "Nothing to boost - no safe recommendations. Run Scan startup first.";
+            return;
+        }
+
+        var confirm = MessageBox.Show(
+            "Startup Booster will:\n\n" +
+            $"   • Disable {toDisable.Count} updater/preloader/helper item(s)\n" +
+            $"   • Delay {toDelay.Count} item(s) to {DelaySeconds}s after logon\n\n" +
+            "Drivers, security software, and unrecognized items are left untouched. " +
+            "Every change is reversible. Continue?",
+            "Boost startup", MessageBoxButton.YesNo, MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            IsBusy = true;
+            int disabled = 0, delayed = 0;
+            var failures = new List<string>();
+            await Task.Run(() =>
+            {
+                foreach (var e in toDisable)
+                {
+                    if (_startup.Disable(e)) disabled++;
+                    else failures.Add($"{e.Name}: could not disable");
+                }
+                foreach (var e in toDelay)
+                {
+                    string? err = _startup.DelayAfterBoot(e, DelaySeconds);
+                    if (err is null) delayed++;
+                    else failures.Add($"{e.Name}: {err}");
+                }
+            });
+
+            foreach (var e in StartupEntries.Where(e => !e.IsEnabled).ToList())
+                StartupEntries.Remove(e);
+
+            Status = $"Startup boosted: disabled {disabled}, delayed {delayed}." +
+                     (failures.Count > 0 ? $" {failures.Count} failed (see log)." : "");
         }
         catch (Exception ex) { Status = $"Error: {ex.Message}"; }
         finally { IsBusy = false; }

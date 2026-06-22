@@ -81,24 +81,31 @@ public sealed class StartupManagerService
     private static readonly string[] KeepKeywords =
     {
         "defender", "antivirus", "security", "mcafee", "norton", "bitdefender",
-        "kaspersky", "realtek", "nahimic", "audio", "synaptics", "touchpad",
-        "elan", "nvidia container", "windows security", "logioptions",
-        "intel(r) graphics", "smartaudio",
+        "kaspersky", "avast", "avg", "malwarebytes", "securityhealth", "eset",
+        "realtek", "nahimic", "audio", "synaptics", "touchpad", "elan",
+        "nvidia container", "windows security", "logioptions", "logi options",
+        "intel(r) graphics", "smartaudio", "conexant", "waves maxx",
+        "fingerprint", "thunderbolt",
     };
 
     private static readonly string[] DelayKeywords =
     {
         "onedrive", "dropbox", "google drive", "googledrivefs", "icloud",
         "slack", "discord", "teams", "skype", "spotify", "zoom", "steam",
-        "epic", "telegram", "whatsapp", "backup",
+        "epic", "telegram", "whatsapp", "backup", "vpn", "geforce", "nvidia geforce",
+        "razer", "synapse", "logitech", "corsair", "icue", "steelseries",
+        "armoury", "snagit", "techsmith", "camtasia", "grammarly", "evernote",
+        "onenote", "box sync", "mega", "sync", "creative cloud",
     };
 
     private static readonly string[] DisableKeywords =
     {
-        "update", "updater", "helper", "bonjour", "itunes", "quicktime",
-        "java", "jusched", "adobe", "acrobat", "reader", "ccleaner",
+        "update", "updater", "jusched", "autolaunch", "helper", "bonjour",
+        "itunes", "quicktime", "java", "adobe", "acrobat", "reader", "ccleaner",
         "coupon", "toolbar", "ask.com", "wildtangent", "shopper",
-        "epicgameslauncher", "originwebhelper", "rockstar",
+        "epicgameslauncher", "originwebhelper", "rockstar", "laserjet",
+        "officejet", "deskjet", "printer", "hp scan", "cyberlink", "powerdvd",
+        "driver booster", "driverbooster", "webcompanion", "pdf architect",
     };
 
     public void Classify(StartupEntry e)
@@ -115,8 +122,8 @@ public sealed class StartupManagerService
         {
             e.Recommendation = StartupRecommendation.Disable;
             e.Impact = BootImpact.Medium;
-            e.Reason = "Auto-updater or optional helper. The app still works if you " +
-                       "launch it manually; this just stops it loading at boot.";
+            e.Reason = "Updater, preloader, or optional helper. The app still works if " +
+                       "you launch it manually; this just stops it loading at boot.";
             e.IsSelected = true; // pre-select safe-to-disable items
         }
         else if (DelayKeywords.Any(hay.Contains))

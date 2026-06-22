@@ -51,6 +51,9 @@
 
             <Grid Grid.Row="3" Margin="0,8,0,0">
                 <StackPanel Orientation="Horizontal">
+                    <Button Content="⚡ Boost startup" Command="{Binding BoostStartupCommand}"
+                            Style="{StaticResource SuccessButton}"
+                            ToolTip="Apply all recommendations: disable updaters/preloaders and delay heavy apps." />
                     <Button Content="Scan startup" Command="{Binding ScanStartupCommand}" />
                     <Button Content="Disable selected" Command="{Binding DisableSelectedCommand}" />
                     <Button Content="Delay selected" Command="{Binding DelaySelectedCommand}"

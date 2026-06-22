@@ -50,17 +50,30 @@ public sealed class DuplicateFinderViewModel : ViewModelBase
         set => SetProperty(ref _summary, value);
     }
 
+    private bool _permanentDelete;
+    public bool PermanentDelete
+    {
+        get => _permanentDelete;
+        set => SetProperty(ref _permanentDelete, value);
+    }
+
     public AsyncRelayCommand ScanCommand { get; }
     public AsyncRelayCommand QuarantineCommand { get; }
+    public AsyncRelayCommand DeleteCommand { get; }
     public RelayCommand CancelCommand { get; }
 
     public DuplicateFinderViewModel()
     {
         ScanCommand = new AsyncRelayCommand(ScanAsync, () => !IsBusy);
         QuarantineCommand = new AsyncRelayCommand(QuarantineAsync,
-            () => !IsBusy && Results.Any(r => r is { IsSelected: true, IsDuplicate: true }));
+            () => !IsBusy && HasSelectedDuplicates());
+        DeleteCommand = new AsyncRelayCommand(DeleteAsync,
+            () => !IsBusy && HasSelectedDuplicates());
         CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
     }
+
+    private bool HasSelectedDuplicates()
+        => Results.Any(r => r is { IsSelected: true, IsDuplicate: true });
 
     private async Task ScanAsync()
     {
@@ -95,6 +108,42 @@ public sealed class DuplicateFinderViewModel : ViewModelBase
         catch (OperationCanceledException)
         {
             Status = "Scan cancelled.";
+        }
+        catch (Exception ex)
+        {
+            Status = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            IsBusy = false;
+            _cts?.Dispose();
+            _cts = null;
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        var selected = Results.Where(r => r is { IsSelected: true, IsDuplicate: true }).ToList();
+        if (selected.Count == 0) return;
+
+        long total = selected.Sum(s => s.SizeBytes);
+        string mode = PermanentDelete ? "permanently delete" : "send to the Recycle Bin";
+        var confirm = MessageBox.Show(
+            $"This will {mode} {selected.Count} duplicate file(s) " +
+            $"({Formatting.HumanSize(total)}).\n\n" +
+            "The kept copy of each set stays in place. Continue?",
+            "Confirm delete", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+        if (confirm != MessageBoxResult.Yes) return;
+
+        try
+        {
+            IsBusy = true;
+            _cts = new CancellationTokenSource();
+            var (count, bytes) = await _service.DeleteAsync(selected, PermanentDelete, _cts.Token);
+            foreach (var item in selected)
+                Results.Remove(item);
+            string where = PermanentDelete ? "permanently" : "to the Recycle Bin";
+            Status = $"Deleted {count} file(s) {where}, freed {Formatting.HumanSize(bytes)}.";
         }
         catch (Exception ex)
         {

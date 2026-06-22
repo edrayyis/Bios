@@ -137,6 +137,35 @@ public sealed class DuplicateFinderService
     }
 
     /// <summary>
+    /// Deletes the selected duplicates. Sends them to the Recycle Bin (so they
+    /// stay recoverable) unless <paramref name="permanent"/> is true. The kept
+    /// copy of each set is never touched. Returns count deleted and bytes freed.
+    /// </summary>
+    public async Task<(int Count, long Bytes)> DeleteAsync(
+        IEnumerable<DuplicateItem> items, bool permanent, CancellationToken ct)
+    {
+        return await Task.Run(() =>
+        {
+            int count = 0;
+            long bytes = 0;
+            foreach (var item in items)
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!File.Exists(item.FullName)) continue;
+                long freed = DeleteFile(item.FullName, permanent);
+                if (!File.Exists(item.FullName))
+                {
+                    count++;
+                    bytes += freed;
+                    Logger.Action($"Deleted duplicate " +
+                        $"({(permanent ? "permanent" : "recycle bin")}): {item.FullName}");
+                }
+            }
+            return (count, bytes);
+        }, ct);
+    }
+
+    /// <summary>
     /// Moves the selected duplicates into a quarantine folder, preserving their
     /// original drive + path so they can be reviewed or restored. Returns the
     /// number successfully moved.

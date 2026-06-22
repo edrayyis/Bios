@@ -64,6 +64,11 @@
             <StackPanel Orientation="Horizontal">
                 <Button Content="Scan" Command="{Binding ScanCommand}" />
                 <Button Content="Quarantine selected" Command="{Binding QuarantineCommand}" />
+                <Button Content="Delete selected" Command="{Binding DeleteCommand}"
+                        Style="{StaticResource DangerButton}" />
+                <CheckBox Content="Permanent delete (skip Recycle Bin)"
+                          IsChecked="{Binding PermanentDelete}" VerticalAlignment="Center"
+                          Margin="4,0,8,0" />
                 <Button Content="Cancel" Command="{Binding CancelCommand}"
                         Style="{StaticResource SecondaryButton}" />
             </StackPanel>

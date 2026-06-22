@@ -100,6 +100,7 @@ public sealed class JunkCleanupService
                     foreach (var f in SafeEnumerateFiles(p))
                     {
                         ct.ThrowIfCancellationRequested();
+                        if (IsSelfPath(f)) continue; // never count our own runtime files
                         try { bytes += new FileInfo(f).Length; count++; }
                         catch { /* skip locked/unreadable */ }
                     }

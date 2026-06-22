@@ -113,11 +113,24 @@ public sealed class StartupManagerViewModel : ViewModelBase
         try
         {
             IsBusy = true;
+            var failures = new List<string>();
             int done = await Task.Run(() =>
-                selected.Count(e => _startup.DelayAfterBoot(e, DelaySeconds)));
+            {
+                int ok = 0;
+                foreach (var e in selected)
+                {
+                    string? err = _startup.DelayAfterBoot(e, DelaySeconds);
+                    if (err is null) ok++;
+                    else failures.Add($"{e.Name}: {err}");
+                }
+                return ok;
+            });
             foreach (var e in selected.Where(e => !e.IsEnabled).ToList())
                 StartupEntries.Remove(e);
-            Status = $"Delayed {done} startup item(s) to {DelaySeconds}s after logon.";
+
+            Status = failures.Count == 0
+                ? $"Delayed {done} startup item(s) to {DelaySeconds}s after logon."
+                : $"Delayed {done}; {failures.Count} failed (see log). First: {failures[0]}";
         }
         catch (Exception ex) { Status = $"Error: {ex.Message}"; }
         finally { IsBusy = false; }

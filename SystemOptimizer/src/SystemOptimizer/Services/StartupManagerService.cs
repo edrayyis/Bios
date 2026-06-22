@@ -195,47 +195,112 @@ public sealed class StartupManagerService
 
     /// <summary>
     /// Converts a startup entry into a delayed scheduled task that fires a set
-    /// number of seconds after logon, then disables the original. Reversible by
-    /// deleting the task and restoring the original entry.
+    /// number of seconds after logon, then disables the original. Built from a
+    /// task XML definition so commands with quotes/arguments register reliably.
+    /// Returns null on success, or an error message on failure.
     /// </summary>
-    public bool DelayAfterBoot(StartupEntry e, int delaySeconds = 60)
+    public string? DelayAfterBoot(StartupEntry e, int delaySeconds = 60)
     {
+        string taskName = $"SystemOptimizer_Delayed_{Sanitize(e.Name)}";
+        string xmlPath = Path.Combine(Path.GetTempPath(), taskName + ".xml");
         try
         {
-            string taskName = $"SystemOptimizer_Delayed_{Sanitize(e.Name)}";
-            var delay = TimeSpan.FromSeconds(delaySeconds);
-            string delayStr = $"{(int)delay.TotalMinutes:00}:{delay.Seconds:00}";
+            var (exe, args) = SplitCommand(e.Command);
+            File.WriteAllText(xmlPath, BuildTaskXml(exe, args, delaySeconds),
+                System.Text.Encoding.Unicode);
 
-            // /SC ONLOGON with /DELAY runs the command after logon + delay.
             var psi = new ProcessStartInfo("schtasks.exe")
             {
-                Arguments =
-                    $"/Create /F /TN \"{taskName}\" /TR \"{e.Command}\" " +
-                    $"/SC ONLOGON /DELAY {delayStr}",
+                Arguments = $"/Create /F /TN \"{taskName}\" /XML \"{xmlPath}\"",
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardError = true,
                 RedirectStandardOutput = true,
             };
-            using var p = Process.Start(psi);
-            p!.WaitForExit();
+            using var p = Process.Start(psi)!;
+            string stderr = p.StandardError.ReadToEnd();
+            p.WaitForExit();
             if (p.ExitCode != 0)
             {
-                Logger.Warn($"schtasks failed for '{e.Name}': {p.StandardError.ReadToEnd()}");
-                return false;
+                string msg = string.IsNullOrWhiteSpace(stderr) ? "schtasks failed." : stderr.Trim();
+                Logger.Warn($"Delay failed for '{e.Name}': {msg}");
+                return msg;
             }
 
-            // Remove the original so it doesn't also run immediately.
-            Disable(e);
+            // Remove the original so it doesn't also run immediately at logon.
+            if (!Disable(e))
+            {
+                Logger.Warn($"Delayed '{e.Name}' but could not remove the original entry.");
+                return "Task created, but the original startup entry could not be removed.";
+            }
+
             Logger.Action($"Delayed startup '{e.Name}' to {delaySeconds}s after logon.");
-            return true;
+            return null;
         }
         catch (Exception ex)
         {
             Logger.Warn($"Failed to delay startup '{e.Name}': {ex.Message}");
-            return false;
+            return ex.Message;
+        }
+        finally
+        {
+            try { if (File.Exists(xmlPath)) File.Delete(xmlPath); } catch { /* ignore */ }
         }
     }
+
+    /// <summary>Splits a command line into executable path and arguments.</summary>
+    private static (string Exe, string Args) SplitCommand(string command)
+    {
+        command = command.Trim();
+        if (command.StartsWith('"'))
+        {
+            int end = command.IndexOf('"', 1);
+            if (end > 0)
+                return (command[1..end], command[(end + 1)..].Trim());
+        }
+        int space = command.IndexOf(' ');
+        return space < 0 ? (command, "") : (command[..space], command[(space + 1)..].Trim());
+    }
+
+    private static string BuildTaskXml(string exe, string args, int delaySeconds)
+    {
+        string argsXml = string.IsNullOrEmpty(args)
+            ? ""
+            : $"\n      <Arguments>{Escape(args)}</Arguments>";
+        return $"""
+        <?xml version="1.0" encoding="UTF-16"?>
+        <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+          <Triggers>
+            <LogonTrigger>
+              <Enabled>true</Enabled>
+              <Delay>PT{delaySeconds}S</Delay>
+            </LogonTrigger>
+          </Triggers>
+          <Principals>
+            <Principal id="Author">
+              <LogonType>InteractiveToken</LogonType>
+              <RunLevel>LeastPrivilege</RunLevel>
+            </Principal>
+          </Principals>
+          <Settings>
+            <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+            <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+            <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+            <StartWhenAvailable>true</StartWhenAvailable>
+            <ExecutionTimeLimit>PT0S</ExecutionTimeLimit>
+          </Settings>
+          <Actions Context="Author">
+            <Exec>
+              <Command>{Escape(exe)}</Command>{argsXml}
+            </Exec>
+          </Actions>
+        </Task>
+        """;
+    }
+
+    private static string Escape(string s)
+        => s.Replace("&", "&amp;").Replace("<", "&lt;").Replace(">", "&gt;")
+            .Replace("\"", "&quot;").Replace("'", "&apos;");
 
     private static string Sanitize(string name)
         => new string(name.Where(c => char.IsLetterOrDigit(c) || c is '_' or '-').ToArray());

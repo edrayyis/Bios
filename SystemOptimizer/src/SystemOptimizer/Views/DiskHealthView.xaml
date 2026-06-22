@@ -43,7 +43,8 @@
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <Grid VerticalAlignment="Center" Margin="2">
-                                <ProgressBar Height="14" Maximum="100" Value="{Binding UsedPercent}"
+                                <ProgressBar Height="14" Maximum="100"
+                                             Value="{Binding UsedPercent, Mode=OneWay}"
                                              Foreground="{Binding UsedPercent, Converter={StaticResource UsedPercentToBrush}}" />
                                 <TextBlock Text="{Binding UsedDisplay}" FontSize="11"
                                            HorizontalAlignment="Center" VerticalAlignment="Center" />

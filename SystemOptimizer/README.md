@@ -16,6 +16,7 @@ PC maintenance tools into one dashboard. Built around a consistent philosophy:
 | **Junk & Temp Cleanup** | Temp folders, Windows Update cache, browser/thumbnail caches, crash dumps | Sends to Recycle Bin by default |
 | **Startup & Bloatware** | Lists logon startup items with keep/delay/disable recommendations; lists installed programs to uninstall | Disable is reversible (backed up); delay uses a scheduled task |
 | **Disk Health & Space** | SSD/HDD detection, health status, volume usage, large-file finder, correct optimize (TRIM/defrag) | Read-only reporting; optimize uses built-in Windows tooling |
+| **Performance** | Live memory monitor, top processes (with End Process), honest standby-cache flush, power-plan switch, visual-effects mode | No fake "RAM booster"; standby flush is the real RAMMap operation, on-demand only |
 
 ## Design principles
 

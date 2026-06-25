@@ -34,6 +34,9 @@
             <TabItem Header="Disk Health &amp; Space">
                 <views:DiskHealthView DataContext="{Binding DiskHealth}" />
             </TabItem>
+            <TabItem Header="Performance">
+                <views:PerformanceView DataContext="{Binding Performance}" />
+            </TabItem>
         </TabControl>
     </Grid>
 </Window>

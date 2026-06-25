@@ -10,6 +10,7 @@ public sealed class MainViewModel
     public JunkCleanupViewModel JunkCleanup { get; } = new();
     public StartupManagerViewModel StartupManager { get; } = new();
     public DiskHealthViewModel DiskHealth { get; } = new();
+    public PerformanceViewModel Performance { get; } = new();
 
     public string Title => "System Optimizer" + (IsElevated ? " (Administrator)" : "");
 

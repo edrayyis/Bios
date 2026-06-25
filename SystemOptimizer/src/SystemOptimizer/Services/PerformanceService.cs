@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Microsoft.Win32;
+using SystemOptimizer.Infrastructure;
 using SystemOptimizer.Models;
 
 namespace SystemOptimizer.Services;

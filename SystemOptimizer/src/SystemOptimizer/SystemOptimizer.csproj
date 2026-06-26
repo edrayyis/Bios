@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <RootNamespace>SystemOptimizer</RootNamespace>
+    <AssemblyName>SystemOptimizer</AssemblyName>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Version>0.1.0</Version>
+    <Authors>SystemOptimizer</Authors>
+    <Product>System Optimizer</Product>
+    <!-- Allows 'dotnet build' to compile this Windows target on non-Windows CI
+         (it still only RUNS on Windows). -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WMI / CIM access for disk health and SMART status -->
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <!-- Registry access for the startup manager -->
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+  </ItemGroup>
+
+  <!-- Microsoft.VisualBasic (Recycle-Bin-aware deletes) ships in the
+       net8.0-windows shared framework, so no extra reference is needed. -->
+
+</Project>

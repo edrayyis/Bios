@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 using SystemOptimizer.Infrastructure;
 using SystemOptimizer.Models;
@@ -128,12 +129,19 @@ public sealed class PerformanceService
         string guid = PlanGuids[kind];
         try
         {
-            // Ultimate Performance isn't present by default - create it first.
-            if (kind == PowerPlanKind.Ultimate)
-                Run("powercfg", $"-duplicatescheme {guid}");
+            // Try to activate the plan directly first.
+            if (Run("powercfg", $"/setactive {guid}") == 0)
+            {
+                Logger.Action($"Set power plan to {kind}.");
+                return true;
+            }
 
-            int code = Run("powercfg", $"/setactive {guid}");
-            Logger.Action($"Set power plan to {kind} (exit {code}).");
+            // Not present (e.g. Ultimate is hidden by default). Reveal it with
+            // duplicatescheme, which prints a NEW GUID, then activate that.
+            string output = RunCapture("powercfg", $"-duplicatescheme {guid}");
+            string revealed = ExtractGuid(output) ?? guid;
+            int code = Run("powercfg", $"/setactive {revealed}");
+            Logger.Action($"Set power plan to {kind} via duplicate (exit {code}).");
             return code == 0;
         }
         catch (Exception ex)
@@ -141,6 +149,13 @@ public sealed class PerformanceService
             Logger.Warn($"Set power plan {kind} failed: {ex.Message}");
             return false;
         }
+    }
+
+    private static string? ExtractGuid(string text)
+    {
+        var m = Regex.Match(text,
+            @"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+        return m.Success ? m.Value : null;
     }
 
     // ---- Visual effects ---------------------------------------------------
@@ -230,7 +245,10 @@ public sealed class PerformanceService
     [DllImport("ntdll.dll")]
     private static extern int NtSetSystemInformation(int infoClass, ref int info, int length);
 
-    [StructLayout(LayoutKind.Sequential)]
+    // Pack=4 is critical: the native LUID is 4-byte aligned, so it sits right
+    // after PrivilegeCount. Default 8-byte alignment would misplace it and the
+    // privilege would silently fail to enable.
+    [StructLayout(LayoutKind.Sequential, Pack = 4)]
     private struct TOKEN_PRIVILEGES
     {
         public int PrivilegeCount;
@@ -273,7 +291,12 @@ public sealed class PerformanceService
                 Luid = luid,
                 Attributes = SE_PRIVILEGE_ENABLED,
             };
-            return AdjustTokenPrivileges(token, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+            bool ok = AdjustTokenPrivileges(token, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+            // AdjustTokenPrivileges returns true even when the privilege wasn't
+            // assigned (ERROR_NOT_ALL_ASSIGNED = 1300); GetLastError is the
+            // real signal.
+            int err = Marshal.GetLastWin32Error();
+            return ok && err == 0;
         }
         finally { CloseHandle(token); }
     }
